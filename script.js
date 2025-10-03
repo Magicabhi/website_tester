@@ -1,4 +1,4 @@
-// ✅ Replace with your deployed Render backend URL
+// ✅ Replace with your actual Render backend URL
 const API_BASE = "https://website-tester-backend-xxxx.onrender.com";
 
 async function runTest(mode) {
