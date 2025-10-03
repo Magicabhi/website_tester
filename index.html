@@ -44,64 +44,67 @@
   </div>
 
   <script>
-    async function runTest(mode) {
-      const url = document.getElementById("urlInput").value;
-      if (!url) {
-        alert("Please enter a URL");
+  async function runTest(mode) {
+    const url = document.getElementById("urlInput").value;
+    if (!url) {
+      alert("Please enter a URL");
+      return;
+    }
+
+    document.getElementById("loading").style.display = "block";
+
+    try {
+      const response = await fetch("https://website-tester-backend-5ad8.onrender.com/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, mode })
+      });
+
+      const data = await response.json();
+      document.getElementById("loading").style.display = "none";
+
+      if (!response.ok) {
+        // Show actual backend error details
+        alert("Error: " + (data.details || data.error || "Unknown error"));
         return;
       }
 
-      document.getElementById("loading").style.display = "block";
+      updateList("functionalResults", data.functional);
+      updateList("usabilityResults", data.usability);
+      updateList("securityResults", data.security);
+      updateList("performanceResults", data.performance);
 
-      try {
-        const response = await fetch("https://website-tester-backend-5ad8.onrender.com/test", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, mode })
-        });
+      renderScore(data.score, data.mode);
 
-        const data = await response.json();
-        document.getElementById("loading").style.display = "none";
-
-        if (data.error) {
-          alert("Error: " + data.error);
-          return;
-        }
-
-        updateList("functionalResults", data.functional);
-        updateList("usabilityResults", data.usability);
-        updateList("securityResults", data.security);
-        updateList("performanceResults", data.performance);
-
-        renderScore(data.score, data.mode);
-
-      } catch (err) {
-        document.getElementById("loading").style.display = "none";
-        alert("Error: Could not connect to server.");
-        console.error(err);
-      }
+    } catch (err) {
+      document.getElementById("loading").style.display = "none";
+      alert("Frontend Error: Could not connect to server.");
+      console.error("Frontend error:", err);
     }
+  }
 
-    function updateList(elementId, items) {
-      const ul = document.getElementById(elementId);
-      ul.innerHTML = "";
-      if (!items) return;
-      items.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = item.text;
-        li.className = item.status;
-        ul.appendChild(li);
-      });
-    }
+  function updateList(elementId, items) {
+    const ul = document.getElementById(elementId);
+    ul.innerHTML = "";
+    if (!items) return;
+    items.forEach(item => {
+      const li = document.createElement("li");
+      li.textContent = item.text;
+      li.className = item.status;
+      ul.appendChild(li);
+    });
+  }
 
-    function renderScore(score, mode) {
-      const board = document.getElementById("scoreBoard");
-      board.textContent = `Score: ${score}%`;
-      board.className = "score-board " + (score >= 90 ? "pass" : score >= 50 ? "warn" : "fail");
+  function renderScore(score, mode) {
+    const board = document.getElementById("scoreBoard");
+    board.textContent = `Score: ${score}%`;
+    board.className = "score-board " + (score >= 90 ? "pass" : score >= 50 ? "warn" : "fail");
 
-      const modeBoard = document.getElementById("modeBoard");
-      modeBoard.textContent = `Mode: ${mode}`;
-    }
-  </script>
+    const modeBoard = document.getElementById("modeBoard");
+    modeBoard.textContent = `Mode: ${mode}`;
+  }
+</script>
+
 </body>
 </html>
+
