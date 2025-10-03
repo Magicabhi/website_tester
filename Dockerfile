@@ -1,6 +1,6 @@
 FROM node:18-slim
 
-# Install required dependencies for Chromium
+# Install Chromium + dependencies
 RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
@@ -24,11 +24,15 @@ RUN apt-get update && apt-get install -y \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Install dependencies
 COPY package*.json ./
 RUN npm install
+
+# Copy code
 COPY . .
 
-# Puppeteer will use this Chrome path
+# Puppeteer path for Chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 EXPOSE 3000
