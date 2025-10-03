@@ -7,24 +7,36 @@ const cors = require("cors");
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+
+// Serve static frontend files if needed (index.html etc.)
 app.use(express.static(path.join(__dirname)));
 
-// scoring helper using PSI thresholds
+// Helper to score based on thresholds (like PageSpeed)
 function scoreMetricPSI(value, good, needsImprovement) {
   if (value <= good) return 100;
   if (value <= needsImprovement) return 50;
   return 0;
 }
 
+// === API: Run Tests ===
 app.post("/test", async (req, res) => {
   const { url, mode } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
+  let browser;
   try {
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-zygote",
+        "--single-process"
+      ]
     });
+
     const page = await browser.newPage();
 
     // Set viewport
@@ -34,27 +46,37 @@ app.post("/test", async (req, res) => {
       await page.setViewport({ width: 1366, height: 768, isMobile: false });
     }
 
-    // Inject Web Vitals observers
+    // Inject perf observers for metrics
     await page.evaluateOnNewDocument(() => {
       window.__perfMetrics = {};
+
+      // Paint (FCP / FP)
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           if (entry.name === "first-contentful-paint") {
             window.__perfMetrics.fcp = entry.startTime;
           }
+          if (entry.name === "first-paint") {
+            window.__perfMetrics.fp = entry.startTime;
+          }
         }
       }).observe({ type: "paint", buffered: true });
 
+      // LCP
       new PerformanceObserver((list) => {
         const entries = list.getEntries();
         const last = entries[entries.length - 1];
-        window.__perfMetrics.lcp = last.renderTime || last.loadTime || last.startTime;
+        window.__perfMetrics.lcp =
+          last.renderTime || last.loadTime || last.startTime;
       }).observe({ type: "largest-contentful-paint", buffered: true });
 
+      // CLS
       let clsValue = 0;
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (!entry.hadRecentInput) clsValue += entry.value;
+          if (!entry.hadRecentInput) {
+            clsValue += entry.value;
+          }
         }
         window.__perfMetrics.cls = clsValue;
       }).observe({ type: "layout-shift", buffered: true });
@@ -86,26 +108,56 @@ app.post("/test", async (req, res) => {
         { text: "Forms present", status: forms > 0 ? "pass" : "fail" },
         { text: "Buttons present", status: buttons > 0 ? "pass" : "fail" }
       ],
+      usability: [
+        { text: "Page has title", status: (await page.title()) ? "pass" : "fail" },
+        {
+          text: "Images present",
+          status: (await page.$$eval("img", imgs => imgs.length)) > 0 ? "pass" : "fail"
+        }
+      ],
+      security: [
+        { text: "HTTPS enabled", status: url.startsWith("https") ? "pass" : "fail" }
+      ],
       performance: [
-        { text: `FCP: ${Math.round(perf.fcp || 0)} ms`, status: scoreMetricPSI(perf.fcp || Infinity, 1800, 3000) >= 50 ? "pass" : "fail" },
-        { text: `LCP: ${Math.round(perf.lcp || 0)} ms`, status: scoreMetricPSI(perf.lcp || Infinity, 2500, 4000) >= 50 ? "pass" : "fail" },
-        { text: `TTFB: ${Math.round(perf.ttfb || 0)} ms`, status: scoreMetricPSI(perf.ttfb || Infinity, 800, 1800) >= 50 ? "pass" : "fail" },
-        { text: `CLS: ${(perf.cls || 0).toFixed(2)}`, status: (perf.cls || 0) <= 0.25 ? "pass" : "fail" },
-        { text: `DOM Content Loaded: ${perf.domContentLoaded} ms`, status: perf.domContentLoaded < 4000 ? "pass" : "fail" },
-        { text: `Total Load Time: ${totalLoadTime} ms`, status: totalLoadTime < (mode === "mobile" ? 5000 : 3000) ? "pass" : "fail" }
+        {
+          text: `FCP: ${Math.round(perf.fcp || 0)} ms`,
+          status: scoreMetricPSI(perf.fcp || Infinity, 1800, 3000) >= 50 ? "pass" : "fail"
+        },
+        {
+          text: `LCP: ${Math.round(perf.lcp || 0)} ms`,
+          status: scoreMetricPSI(perf.lcp || Infinity, 2500, 4000) >= 50 ? "pass" : "fail"
+        },
+        {
+          text: `TTFB: ${Math.round(perf.ttfb || 0)} ms`,
+          status: scoreMetricPSI(perf.ttfb || Infinity, 800, 1800) >= 50 ? "pass" : "fail"
+        },
+        {
+          text: `CLS: ${(perf.cls || 0).toFixed(2)}`,
+          status: (perf.cls || 0) <= 0.25 ? "pass" : "fail"
+        },
+        {
+          text: `DOM Content Loaded: ${perf.domContentLoaded} ms`,
+          status: perf.domContentLoaded < 4000 ? "pass" : "fail"
+        },
+        {
+          text: `Total Load Time: ${totalLoadTime} ms`,
+          status: totalLoadTime < (mode === "mobile" ? 5000 : 3000) ? "pass" : "fail"
+        }
       ]
     };
 
-    // Score aggregation
+    // Overall score
     const scores = [
       scoreMetricPSI(perf.fcp || Infinity, 1800, 3000),
       scoreMetricPSI(perf.lcp || Infinity, 2500, 4000),
       scoreMetricPSI(perf.ttfb || Infinity, 800, 1800),
-      (perf.cls <= 0.10 ? 100 : perf.cls <= 0.25 ? 50 : 0)
+      (perf.cls <= 0.10 ? 100 : perf.cls <= 0.25 ? 50 : 0),
+      scoreMetricPSI(totalLoadTime, mode === "mobile" ? 5000 : 3000, mode === "mobile" ? 8000 : 5000)
     ];
 
-    const passed = [...results.functional].filter(t => t.status === "pass").length;
-    scores.push((passed / results.functional.length) * 100);
+    [...results.functional, ...results.usability, ...results.security].forEach(test => {
+      scores.push(test.status === "pass" ? 100 : 0);
+    });
 
     results.score = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     results.mode = mode;
@@ -113,11 +165,20 @@ app.post("/test", async (req, res) => {
     await browser.close();
     res.json(results);
 
-  } catch (err) {
-    res.status(500).json({ error: "Test failed", details: err.message });
+  } catch (error) {
+    console.error("❌ Puppeteer test error:", error); // full log in Render dashboard
+    if (browser) await browser.close();
+    res.status(500).json({ error: "Test failed", details: error.message });
   }
 });
 
-app.listen(3000, () => {
-  console.log("✅ Open http://localhost:3000/index.html");
+// Health check
+app.get("/ping", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
