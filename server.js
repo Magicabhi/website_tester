@@ -6,12 +6,18 @@ const cors = require("cors");
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
 
-// Serve static frontend files if needed (index.html etc.)
+// ✅ Explicit CORS config so GitHub Pages frontend can talk to backend
+app.use(cors({
+  origin: "*", // allow all origins (or replace with "https://magicabhi.github.io" for stricter)
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
+}));
+
+// Serve static frontend files if needed
 app.use(express.static(path.join(__dirname)));
 
-// Helper to score based on thresholds (like PageSpeed)
+// Helper to score based on thresholds
 function scoreMetricPSI(value, good, needsImprovement) {
   if (value <= good) return 100;
   if (value <= needsImprovement) return 50;
@@ -46,23 +52,18 @@ app.post("/test", async (req, res) => {
       await page.setViewport({ width: 1366, height: 768, isMobile: false });
     }
 
-    // Inject perf observers for metrics
+    // Inject observers for Web Vitals
     await page.evaluateOnNewDocument(() => {
       window.__perfMetrics = {};
 
-      // Paint (FCP / FP)
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           if (entry.name === "first-contentful-paint") {
             window.__perfMetrics.fcp = entry.startTime;
           }
-          if (entry.name === "first-paint") {
-            window.__perfMetrics.fp = entry.startTime;
-          }
         }
       }).observe({ type: "paint", buffered: true });
 
-      // LCP
       new PerformanceObserver((list) => {
         const entries = list.getEntries();
         const last = entries[entries.length - 1];
@@ -70,7 +71,6 @@ app.post("/test", async (req, res) => {
           last.renderTime || last.loadTime || last.startTime;
       }).observe({ type: "largest-contentful-paint", buffered: true });
 
-      // CLS
       let clsValue = 0;
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
@@ -146,7 +146,7 @@ app.post("/test", async (req, res) => {
       ]
     };
 
-    // Overall score
+    // Calculate score
     const scores = [
       scoreMetricPSI(perf.fcp || Infinity, 1800, 3000),
       scoreMetricPSI(perf.lcp || Infinity, 2500, 4000),
@@ -166,7 +166,7 @@ app.post("/test", async (req, res) => {
     res.json(results);
 
   } catch (error) {
-    console.error("❌ Puppeteer test error:", error); // full log in Render dashboard
+    console.error("❌ Puppeteer test error:", error);
     if (browser) await browser.close();
     res.status(500).json({ error: "Test failed", details: error.message });
   }
