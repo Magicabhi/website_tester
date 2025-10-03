@@ -7,8 +7,11 @@ const { execSync } = require("child_process");
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
 
+// ✅ Allow all origins (important for GitHub Pages → Render)
+app.use(cors({ origin: "*" }));
+
+// Serve static if needed
 app.use(express.static(path.join(__dirname)));
 
 // === Helper to launch Chromium ===
@@ -94,11 +97,14 @@ app.post("/test", async (req, res) => {
 // === Health Check ===
 app.get("/ping", (req, res) => res.json({ status: "ok" }));
 
-// === Diagnostic route (Chrome check) ===
+// === Diagnostic Chrome check ===
 app.get("/check-chrome", (req, res) => {
   try {
     const version = execSync("/usr/bin/chromium --version").toString();
-    res.json({ chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium", version });
+    res.json({
+      chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium",
+      version
+    });
   } catch (err) {
     res.json({ error: "Chromium not found", details: err.message });
   }
