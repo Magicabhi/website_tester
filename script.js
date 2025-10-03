@@ -1,5 +1,5 @@
-// ✅ Replace this with your actual Render backend URL
-const API_BASE = "https://website-tester-backend-5ad8.onrender.com";
+// ✅ Replace with your deployed Render backend URL
+const API_BASE = "https://website-tester-backend-xxxx.onrender.com";
 
 async function runTest(mode) {
   const url = document.getElementById("urlInput").value;
@@ -21,16 +21,13 @@ async function runTest(mode) {
 
     const data = await response.json();
 
-    if (data.error) {
-      throw new Error(data.details || data.error);
-    }
+    if (data.error) throw new Error(data.details || data.error);
 
     renderResults(data);
 
   } catch (err) {
     document.getElementById("error").style.display = "block";
     document.getElementById("error").textContent = "❌ " + err.message;
-    console.error(err);
   } finally {
     document.getElementById("loading").style.display = "none";
   }
