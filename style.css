@@ -1,0 +1,82 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f9fafb;
+  margin: 0;
+  padding: 20px;
+  color: #111827;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+h1 { font-size: 1.8rem; margin-bottom: 20px; }
+
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+}
+
+.input-group button {
+  padding: 10px 20px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.input-group button:hover {
+  background: #1e40af;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  padding: 15px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+ul { list-style: none; padding: 0; }
+ul li { margin: 6px 0; }
+
+ul li.pass { color: green; }
+ul li.fail { color: red; }
+
+.loading {
+  font-weight: bold;
+  color: #2563eb;
+  margin: 10px 0;
+}
+.hidden { display: none; }
+
+.score-board {
+  font-size: 1.3rem;
+  font-weight: bold;
+  margin: 15px 0;
+}
+.score {
+  color: #2563eb;
+}
