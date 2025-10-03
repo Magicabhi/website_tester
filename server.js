@@ -3,15 +3,15 @@ const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer-core");
 const path = require("path");
 const cors = require("cors");
+const { execSync } = require("child_process");
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-// Serve frontend if needed
 app.use(express.static(path.join(__dirname)));
 
-// Launch Chrome (Docker environment)
+// === Helper to launch Chromium ===
 async function launchBrowser(isMobile) {
   return await puppeteer.launch({
     headless: true,
@@ -29,7 +29,7 @@ async function launchBrowser(isMobile) {
   });
 }
 
-// === API Route ===
+// === API Route: Run Tests ===
 app.post("/test", async (req, res) => {
   const { url, mode } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
@@ -54,7 +54,7 @@ app.post("/test", async (req, res) => {
     // Security
     const isHttps = url.startsWith("https");
 
-    // Results
+    // Build results
     const results = {
       functional: [
         { text: "Links present", status: links > 0 ? "pass" : "fail" },
@@ -70,12 +70,16 @@ app.post("/test", async (req, res) => {
       ],
       performance: [
         { text: `Page load time: ${loadTime} ms`, status: loadTime < 5000 ? "pass" : "fail" }
-      ],
-      score: 0
+      ]
     };
 
-    // Score calculation
-    const all = [...results.functional, ...results.usability, ...results.security, ...results.performance];
+    // Score
+    const all = [
+      ...results.functional,
+      ...results.usability,
+      ...results.security,
+      ...results.performance
+    ];
     const passed = all.filter(t => t.status === "pass").length;
     results.score = Math.round((passed / all.length) * 100);
 
@@ -87,7 +91,17 @@ app.post("/test", async (req, res) => {
   }
 });
 
-// Health
+// === Health Check ===
 app.get("/ping", (req, res) => res.json({ status: "ok" }));
+
+// === Diagnostic route (Chrome check) ===
+app.get("/check-chrome", (req, res) => {
+  try {
+    const version = execSync("/usr/bin/chromium --version").toString();
+    res.json({ chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium", version });
+  } catch (err) {
+    res.json({ error: "Chromium not found", details: err.message });
+  }
+});
 
 app.listen(3000, () => console.log("✅ Backend running on port 3000"));
