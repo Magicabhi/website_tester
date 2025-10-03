@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: website-tester-backend
+    env: docker
+    plan: free
+    autoDeploy: true
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
