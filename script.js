@@ -1,4 +1,5 @@
-const API_BASE = "https://website-tester-backend-5ad8.onrender.com"; // ✅ Render backend
+// ✅ Replace this with your actual Render backend URL
+const API_BASE = "https://website-tester-backend-5ad8.onrender.com";
 
 async function runTest(mode) {
   const url = document.getElementById("urlInput").value;
@@ -9,7 +10,7 @@ async function runTest(mode) {
 
   document.getElementById("loading").style.display = "block";
   document.getElementById("error").style.display = "none";
-  document.getElementById("modeLabel").textContent = `Overall Score (${mode === "mobile" ? "Mobile" : "Desktop"})`;
+  document.getElementById("modeLabel").textContent = `Overall Score (${mode})`;
 
   try {
     const response = await fetch(`${API_BASE}/test`, {
