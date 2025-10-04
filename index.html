@@ -9,21 +9,19 @@
 <body>
   <div class="container">
     <h1>Website Testing Dashboard</h1>
-
     <div class="input-group">
       <input type="url" id="urlInput" placeholder="Enter website URL">
       <button onclick="runTest('desktop')">Test Desktop</button>
       <button onclick="runTest('mobile')">Test Mobile</button>
     </div>
 
-    <div id="loading" class="loading" style="display:none;">🔄 Running tests...</div>
+    <div id="loading" style="display:none;">⏳ Running tests...</div>
     <div id="error" class="error" style="display:none;"></div>
 
+    <h2 id="modeLabel">Overall Score</h2>
+    <div id="scoreBoard" class="score">-</div>
+
     <div class="cards">
-      <div class="card highlight">
-        <h3 id="modeLabel">Overall Score</h3>
-        <div id="scoreBoard" class="score">--</div>
-      </div>
       <div class="card">
         <h3>Functional Tests</h3>
         <ul id="functionalResults"></ul>
@@ -42,7 +40,6 @@
       </div>
     </div>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>
