@@ -20,11 +20,9 @@ async function runTest(mode) {
     });
 
     const data = await response.json();
-
     if (data.error) throw new Error(data.details || data.error);
 
     renderResults(data);
-
   } catch (err) {
     document.getElementById("error").style.display = "block";
     document.getElementById("error").textContent = "❌ " + err.message;
