@@ -1,20 +1,13 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer-core");
-const path = require("path");
 const cors = require("cors");
 const { execSync } = require("child_process");
 
 const app = express();
 app.use(bodyParser.json());
+app.use(cors({ origin: "*" })); // Allow frontend (GitHub Pages)
 
-// ✅ Allow all origins (important for GitHub Pages → Render)
-app.use(cors({ origin: "*" }));
-
-// Serve static if needed
-app.use(express.static(path.join(__dirname)));
-
-// === Helper to launch Chromium ===
 async function launchBrowser(isMobile) {
   return await puppeteer.launch({
     headless: true,
@@ -32,7 +25,6 @@ async function launchBrowser(isMobile) {
   });
 }
 
-// === API Route: Run Tests ===
 app.post("/test", async (req, res) => {
   const { url, mode } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
@@ -45,19 +37,13 @@ app.post("/test", async (req, res) => {
     await page.goto(url, { waitUntil: "load", timeout: 60000 });
     const loadTime = Date.now() - start;
 
-    // Functional checks
     const links = await page.$$eval("a", as => as.length);
     const forms = await page.$$eval("form", fs => fs.length);
     const buttons = await page.$$eval("button", bs => bs.length);
-
-    // Usability
     const title = await page.title();
     const images = await page.$$eval("img", imgs => imgs.length);
-
-    // Security
     const isHttps = url.startsWith("https");
 
-    // Build results
     const results = {
       functional: [
         { text: "Links present", status: links > 0 ? "pass" : "fail" },
@@ -76,35 +62,23 @@ app.post("/test", async (req, res) => {
       ]
     };
 
-    // Score
-    const all = [
-      ...results.functional,
-      ...results.usability,
-      ...results.security,
-      ...results.performance
-    ];
+    const all = [...results.functional, ...results.usability, ...results.security, ...results.performance];
     const passed = all.filter(t => t.status === "pass").length;
     results.score = Math.round((passed / all.length) * 100);
 
     await browser.close();
     res.json(results);
-
   } catch (error) {
     res.status(500).json({ error: "Test failed", details: error.message });
   }
 });
 
-// === Health Check ===
+// Health checks
 app.get("/ping", (req, res) => res.json({ status: "ok" }));
-
-// === Diagnostic Chrome check ===
 app.get("/check-chrome", (req, res) => {
   try {
     const version = execSync("/usr/bin/chromium --version").toString();
-    res.json({
-      chromiumPath: process.env.PUPPETEER_EXECUTABLE_PATH || "/usr/bin/chromium",
-      version
-    });
+    res.json({ chromiumPath: "/usr/bin/chromium", version });
   } catch (err) {
     res.json({ error: "Chromium not found", details: err.message });
   }
