@@ -6,7 +6,7 @@ const { execSync } = require("child_process");
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors({ origin: "*" })); // Allow frontend (GitHub Pages)
+app.use(cors({ origin: "*" }));
 
 async function launchBrowser(isMobile) {
   return await puppeteer.launch({
